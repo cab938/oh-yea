@@ -1,6 +1,6 @@
 # Repository simplification and Linux source release
 
-Status: the local refactor is implemented, and the source release passes clean-install verification. Publication and fresh-installation acceptance with a real external account remain pending. MIT licensing has no personal attribution.
+Status: the local refactor is implemented and published as [v0.2.0](https://github.com/cab938/oh-yea/releases/tag/v0.2.0). Clean-install and fixture verification pass. Fresh-installation acceptance with a real external account remains pending. MIT licensing has no personal attribution.
 
 ## Agreed release target
 
@@ -83,7 +83,7 @@ Completion: setup and verification can be followed from a clean checkout without
 - [x] Exercise a read-only capability with fixtures.
 - [ ] Perform account-dependent acceptance on a fresh Linux installation when the required account is available; this has not been verified.
 - [x] Choose the repository host and owner/name.
-- [ ] Review the exact public contents, publish the repository, and tag the initial source release.
+- [x] Review the exact public contents, publish the repository, and tag the initial source release.
 
 Completion: a public tagged source release exists, with a reproducible Linux installation path and an accurate statement of what was verified.
 
@@ -108,6 +108,8 @@ Do not substitute a passing fixture test for verified access to a real external 
 - Historical commits contain personal fixture routing. The reviewed source archive excludes Git history; the existing local history is preserved. Do not publish the old history as part of the clean source release.
 - The release is `output/releases/agent-broker-0.2.0-source.tar.gz`, with an adjacent SHA-256 file manifest. Its explicit allowlist includes the lockfile and selected artwork, excludes private configuration, generated contracts, logs, dependencies, and image experiments, and was checked for configured service-token bytes.
 
+- The public repository is `cab938/oh-yea`; `v0.2.0` points to source commit `0a3401cd6511197b94b5c81b2adaec6786eaa8c7`. Remote paths, modes, and blob hashes match all 103 reviewed files. Anonymous Git access confirms the public branch and tag. The release archive and its manifest represent that tagged snapshot; this post-publication record is maintained on the main branch.
+
 ### Linux smoke invocation
 
 The verification command was run from each source tree with the native-Xvfb skill installed under the operator's Codex home:
@@ -124,6 +126,6 @@ env __EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json \
 
 The clean-source screenshot is `/tmp/agent-broker-clean-source-smoke.png`; its fixture run completed successfully. The harness provided an isolated display and D-Bus state, and teardown was verified after completion.
 
-## Next release step
+## Remaining acceptance
 
-Publish the reviewed clean source snapshot to `cab938/oh-yea` and tag `v0.2.0`. Keep real-account acceptance explicitly pending until exercised. No installer distribution or npm publication has been introduced.
+Exercise a configured read-only capability with a real external account on a fresh Linux installation when that account is available. This remains distinct from the completed clean-source fixture verification. No installer distribution or npm publication has been introduced.
