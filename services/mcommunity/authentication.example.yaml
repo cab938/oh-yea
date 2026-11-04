@@ -1,0 +1,7 @@
+version: 1
+authentications:
+  mcommunity_session:
+    display_name: MCommunity
+    sign_in_group: U-M SSO
+    url: https://mcommunity.example.invalid/my-groups
+    login_url: https://mcommunity.example.invalid/my-groups

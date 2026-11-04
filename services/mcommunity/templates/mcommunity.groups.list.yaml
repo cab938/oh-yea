@@ -1,0 +1,98 @@
+# Operator template: copy to private capabilities/, replace example routing, then enable.
+name: mcommunity.groups.list
+service: mcommunity
+description: Active MCommunity groups the operator owns or belongs to, with human deep links
+enabled: false
+url: https://mcommunity.example.invalid/my-groups
+authentication: mcommunity_session
+extraction:
+  type: browser_json
+  response_url: https://mcommunity.example.invalid/api/groups/
+  response_method: GET
+  pointer: ""
+  transform: mcommunity_groups
+contract:
+  input_schema:
+    type: object
+    additionalProperties: false
+  output_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - groups
+    properties:
+      groups:
+        type: array
+        items:
+          $ref: "#/$defs/group"
+    $defs:
+      entitlement:
+        type: object
+        additionalProperties: false
+        required:
+          - system
+          - foreign_key
+          - changed_at
+        properties:
+          system:
+            type:
+              - string
+              - "null"
+          foreign_key:
+            type:
+              - string
+              - "null"
+          changed_at:
+            type:
+              - string
+              - "null"
+      group:
+        type: object
+        additionalProperties: false
+        required:
+          - key
+          - name
+          - email
+          - description
+          - is_owner
+          - is_member
+          - expires_at
+          - modified_at
+          - gid_number
+          - service_entitlements
+          - group_url
+        properties:
+          key:
+            type: string
+          name:
+            type: string
+          email:
+            type:
+              - string
+              - "null"
+          description:
+            type:
+              - string
+              - "null"
+          is_owner:
+            type: boolean
+          is_member:
+            type: boolean
+          expires_at:
+            type:
+              - string
+              - "null"
+          modified_at:
+            type:
+              - string
+              - "null"
+          gid_number:
+            type:
+              - number
+              - "null"
+          service_entitlements:
+            type: array
+            items:
+              $ref: "#/$defs/entitlement"
+          group_url:
+            type: string

@@ -1,0 +1,56 @@
+# Disabled operator template. Use the same configured origin as umgpt_session.
+name: umich.umgpt.conversations.list
+service: umgpt
+description: List conversations belonging to the authenticated UM GPT user
+enabled: false
+url: https://umgpt.example.test/
+authentication: umgpt_session
+extraction:
+  type: umgpt_conversation
+  operation: list
+contract:
+  input_schema:
+    type: object
+    additionalProperties: false
+    required: []
+    properties: {}
+  output_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - conversations
+    properties:
+      conversations:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - title
+            - model_id
+            - agentic
+            - created_at
+            - updated_at
+            - message_count
+          properties:
+            id:
+              type: integer
+              minimum: 1
+            title:
+              type: string
+            model_id:
+              type:
+                - integer
+                - "null"
+            agentic:
+              type: boolean
+            created_at: &a1
+              type:
+                - string
+                - "null"
+            updated_at: *a1
+            message_count:
+              type:
+                - integer
+                - "null"

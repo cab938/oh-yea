@@ -1,0 +1,14 @@
+node_modules/
+npm-debug.log*
+.env
+services/*/capabilities.json
+services/*/*.tmp
+config.yaml
+capabilities/*.yaml
+!capabilities/.gitkeep
+*.sock
+coverage/
+logs/
+output/
+*.tgz
+.DS_Store

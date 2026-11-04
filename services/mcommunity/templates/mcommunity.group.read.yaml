@@ -1,0 +1,131 @@
+# Operator template: copy to private capabilities/, replace example routing, then enable.
+name: mcommunity.group.read
+service: mcommunity
+description: Details and membership for one active MCommunity group selected from mcommunity.groups.list
+enabled: false
+url: https://mcommunity.example.invalid/my-groups
+authentication: mcommunity_session
+extraction:
+  type: browser_json
+  response_url: https://mcommunity.example.invalid/api/groups/
+  response_method: GET
+  pointer: ""
+  transform: mcommunity_group
+contract:
+  input_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - group
+    properties:
+      group:
+        type: string
+        minLength: 1
+  output_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - key
+      - name
+      - email
+      - description
+      - is_owner
+      - is_member
+      - expires_at
+      - modified_at
+      - gid_number
+      - service_entitlements
+      - group_url
+      - joinable
+      - members_only
+      - private
+      - suppress_no_email_error
+      - owners
+      - members
+    properties:
+      key:
+        type: string
+      name:
+        type: string
+      email:
+        type:
+          - string
+          - "null"
+      description:
+        type:
+          - string
+          - "null"
+      is_owner:
+        type: boolean
+      is_member:
+        type: boolean
+      expires_at:
+        type:
+          - string
+          - "null"
+      modified_at:
+        type:
+          - string
+          - "null"
+      gid_number:
+        type:
+          - number
+          - "null"
+      service_entitlements:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - system
+            - foreign_key
+            - changed_at
+          properties:
+            system:
+              type:
+                - string
+                - "null"
+            foreign_key:
+              type:
+                - string
+                - "null"
+            changed_at:
+              type:
+                - string
+                - "null"
+      group_url:
+        type: string
+      joinable:
+        type: boolean
+      members_only:
+        type: boolean
+      private:
+        type: boolean
+      suppress_no_email_error:
+        type: boolean
+      owners:
+        type: array
+        items:
+          $ref: "#/$defs/principal"
+      members:
+        type: array
+        items:
+          $ref: "#/$defs/principal"
+    $defs:
+      principal:
+        type: object
+        additionalProperties: false
+        required:
+          - kind
+          - id
+          - directory_id
+        properties:
+          kind:
+            enum:
+              - person
+              - group
+              - directory_entry
+          id:
+            type: string
+          directory_id:
+            type: string

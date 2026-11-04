@@ -1,0 +1,21 @@
+# Operator template: copy to private capabilities/, replace example routing, then enable.
+name: arc.remaining_hours.read
+service: arc
+description: ARC Great Lakes remaining partition hours
+enabled: false
+url: https://arc-api.example.invalid/remaining-hours
+authentication: arc_session
+extraction:
+  type: authenticated_json
+  request_headers:
+    Authorization:
+      response_header: x-example-identity
+      prefix: "Bearer "
+  pointer: /remaining
+contract:
+  input_schema:
+    type: object
+  output_schema:
+    type: object
+    additionalProperties:
+      type: number

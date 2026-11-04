@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>agent-broker</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="app-identity">
+        <h1>agent-broker</h1>
+        <span
+          id="development-auth-persistence"
+          class="development-mode"
+          title="Authentication state will persist across broker restarts"
+          hidden
+        >DEV · auth persistence</span>
+      </div>
+      <div
+        id="authentication-states"
+        class="service-states"
+        data-testid="authentication-states"
+        aria-label="Application session status"
+      ></div>
+    </header>
+
+    <main class="workspace">
+      <section class="pane browser-pane" aria-labelledby="browser-heading">
+        <div class="pane-heading">
+          <h2 id="browser-heading">Browser</h2>
+        </div>
+
+        <div class="browser-toolbar">
+          <button id="back-button" class="icon-button" aria-label="Back">←</button>
+          <button id="forward-button" class="icon-button" aria-label="Forward">→</button>
+          <button id="reload-button" class="icon-button" aria-label="Reload">↻</button>
+          <label class="address-shell">
+            <span class="lock-mark" aria-hidden="true">◇</span>
+            <input
+              id="address-input"
+              aria-label="Browser address"
+              autocomplete="off"
+              spellcheck="false"
+              value="agent-broker://ready"
+            />
+          </label>
+          <button id="go-button" class="go-button">Go</button>
+        </div>
+
+        <div id="browser-status" class="browser-status neutral">
+          <span class="status-symbol">●</span>
+          <span id="browser-status-text">Waiting for an authorized request</span>
+        </div>
+
+        <div class="browser-stage">
+          <webview
+            id="auth-browser"
+            src="./browser-placeholder.html"
+          ></webview>
+          <div id="browser-fallback" class="browser-fallback" aria-hidden="true"></div>
+        </div>
+      </section>
+
+      <section class="pane config-pane" aria-label="Configuration">
+        <div class="pane-heading">
+          <div class="config-tabs" role="tablist" aria-label="Configuration sections">
+            <button
+              id="capabilities-tab"
+              class="config-tab active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+            >Capabilities</button>
+            <button
+              id="authentication-tab"
+              class="config-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+            >Authentication</button>
+          </div>
+          <span id="capability-count" class="count-badge">0 capabilities</span>
+        </div>
+
+        <div id="capabilities-panel" class="config-panel">
+          <div class="capability-browser">
+            <div id="capability-list" class="capability-list" role="listbox"></div>
+            <button id="new-capability" class="new-capability" type="button">New</button>
+          </div>
+          <div class="file-label">
+            <span id="capability-path">Loading…</span>
+          </div>
+          <textarea
+            id="capability-editor"
+            data-testid="capability-editor"
+            aria-label="Capability YAML"
+            spellcheck="false"
+          ></textarea>
+          <div id="capability-message" class="config-message"></div>
+          <div class="config-actions">
+            <span id="capability-state" class="saved-state">Not loaded</span>
+            <button id="save-capability" data-testid="save-capability">Save &amp; apply</button>
+          </div>
+        </div>
+
+        <div id="authentication-panel" class="config-panel hidden">
+          <div class="file-label">
+            <span id="config-path">Loading…</span>
+          </div>
+          <textarea
+            id="config-editor"
+            data-testid="config-editor"
+            aria-label="Authentication YAML configuration"
+            spellcheck="false"
+          ></textarea>
+          <div id="config-message" class="config-message"></div>
+          <div class="config-actions">
+            <span id="config-state" class="saved-state">Not loaded</span>
+            <button id="save-config" data-testid="save-config">Save &amp; apply</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer>
+      <span><span class="footer-dot"></span> Local socket</span>
+      <span id="socket-path">Not connected</span>
+    </footer>
+
+    <script type="module" src="./renderer.mjs"></script>
+  </body>
+</html>

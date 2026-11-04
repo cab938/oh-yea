@@ -1,0 +1,10 @@
+version: 1
+authentications:
+  arc_session:
+    display_name: ARC
+    sign_in_group: U-M SSO
+    url: https://arc.example.invalid/identity
+    login_url: https://arc.example.invalid/
+    expected_expiry:
+      json_pointer: /id_token/exp
+      format: unix_seconds

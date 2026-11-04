@@ -1,0 +1,7 @@
+version: 1
+authentications:
+  umgpt_session:
+    display_name: UM GPT
+    sign_in_group: U-M SSO
+    url: https://umgpt.example.test/umgpt/api/me
+    login_url: https://umgpt.example.test/

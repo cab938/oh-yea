@@ -1,0 +1,7 @@
+version: 1
+authentications:
+  teamdynamix_sso:
+    display_name: Expense reports
+    sign_in_group: U-M SSO
+    url: https://teamdynamix.example.invalid/expense/request
+    login_url: https://teamdynamix.example.invalid/expense/request

@@ -1,0 +1,95 @@
+# Disabled operator template. Use the same configured origin as umgpt_session.
+name: umich.umgpt.conversation.read
+service: umgpt
+description: Read messages and pending tool approvals in one of your UM GPT conversations
+enabled: false
+url: https://umgpt.example.test/
+authentication: umgpt_session
+extraction:
+  type: umgpt_conversation
+  operation: read
+contract:
+  input_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - conversation_id
+    properties:
+      conversation_id: &a1
+        type: integer
+        minimum: 1
+  output_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - conversation
+      - messages
+    properties:
+      conversation:
+        type: object
+        additionalProperties: false
+        required:
+          - id
+          - title
+          - model_id
+          - agentic
+          - created_at
+          - updated_at
+          - message_count
+        properties:
+          id: *a1
+          title:
+            type: string
+          model_id:
+            type:
+              - integer
+              - "null"
+          agentic:
+            type: boolean
+          created_at: &a2
+            type:
+              - string
+              - "null"
+          updated_at: *a2
+          message_count:
+            type:
+              - integer
+              - "null"
+      messages:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - conversation_id
+            - role
+            - content
+            - created_at
+            - has_attachments
+            - tool_name
+            - action_id
+            - interrupt_id
+            - approval_pending
+          properties:
+            id:
+              type:
+                - integer
+                - string
+                - "null"
+            conversation_id: *a1
+            role:
+              enum:
+                - user
+                - assistant
+                - tool
+                - interrupt
+            content: *a2
+            created_at: *a2
+            has_attachments:
+              type: boolean
+            tool_name: *a2
+            action_id: *a2
+            interrupt_id: *a2
+            approval_pending:
+              type: boolean

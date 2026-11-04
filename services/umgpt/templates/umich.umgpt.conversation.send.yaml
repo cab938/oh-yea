@@ -1,0 +1,89 @@
+# Disabled operator template. Use the same configured origin as umgpt_session.
+name: umich.umgpt.conversation.send
+service: umgpt
+description: Send one text prompt to a new or existing UM GPT conversation; agentic models may use
+  your enabled connectors. Tool approvals remain human-operated.
+enabled: false
+authentication: umgpt_session
+action:
+  type: umgpt_conversation
+  page_url: https://umgpt.example.test/
+contract:
+  input_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - request_id
+      - prompt
+      - model_id
+    properties:
+      request_id:
+        type: string
+        pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$
+      prompt:
+        type: string
+        minLength: 1
+        maxLength: 100000
+      model_id: &a1
+        type: integer
+        minimum: 1
+      conversation_id: *a1
+  output_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - request_id
+      - status
+      - conversation_id
+      - conversation_url
+      - model_id
+      - message
+    properties:
+      request_id: &a2
+        type: string
+      status:
+        enum:
+          - complete
+          - approval_required
+      conversation_id: *a1
+      conversation_url: *a2
+      model_id: *a1
+      message:
+        type: object
+        additionalProperties: false
+        required:
+          - id
+          - conversation_id
+          - role
+          - content
+          - created_at
+          - has_attachments
+          - tool_name
+          - action_id
+          - interrupt_id
+          - approval_pending
+        properties:
+          id:
+            type:
+              - integer
+              - string
+              - "null"
+          conversation_id: *a1
+          role:
+            enum:
+              - user
+              - assistant
+              - tool
+              - interrupt
+          content: &a3
+            type:
+              - string
+              - "null"
+          created_at: *a3
+          has_attachments:
+            type: boolean
+          tool_name: *a3
+          action_id: *a3
+          interrupt_id: *a3
+          approval_pending:
+            type: boolean

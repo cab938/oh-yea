@@ -1,0 +1,50 @@
+# Disabled operator template. Use the same configured origin as umgpt_session.
+name: umich.umgpt.connectors.list
+service: umgpt
+description: List installed UM GPT account connectors, their active states, descriptions, and tool counts
+enabled: false
+url: https://umgpt.example.test/
+authentication: umgpt_session
+extraction:
+  type: umgpt_conversation
+  operation: connectors
+contract:
+  input_schema:
+    type: object
+    additionalProperties: false
+    required: []
+    properties: {}
+  output_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - connectors
+    properties:
+      connectors:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - display_name
+            - description
+            - is_active
+            - tool_count
+          properties:
+            id:
+              type: integer
+              minimum: 1
+            display_name:
+              type: string
+            description:
+              type:
+                - string
+                - "null"
+            is_active:
+              type: boolean
+            tool_count:
+              type:
+                - integer
+                - "null"
+              minimum: 0

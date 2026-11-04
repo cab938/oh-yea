@@ -1,0 +1,50 @@
+# Disabled operator template. Use the same configured origin as umgpt_session.
+name: umich.umgpt.models.list
+service: umgpt
+description: List available UM GPT text models and their agentic status
+enabled: false
+url: https://umgpt.example.test/
+authentication: umgpt_session
+extraction:
+  type: umgpt_conversation
+  operation: models
+contract:
+  input_schema:
+    type: object
+    additionalProperties: false
+    required: []
+    properties: {}
+  output_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - models
+    properties:
+      models:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - title
+            - agentic
+            - backend_type
+            - supports_upload
+            - supports_phi
+          properties:
+            id:
+              type: integer
+              minimum: 1
+            title:
+              type: string
+            agentic:
+              type: boolean
+            backend_type:
+              type:
+                - string
+                - "null"
+            supports_upload:
+              type: boolean
+            supports_phi:
+              type: boolean

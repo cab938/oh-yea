@@ -1,0 +1,342 @@
+# Replace every example URL, form field, and choice value with inspected values.
+# Keep capture and submit routing and input contracts aligned in the private installation.
+name: umich.teamdynamix.expense_report.capture
+service: expense-reports
+description: Rehearse one SSC expense report and capture its mapped request without submitting
+enabled: false
+authentication: teamdynamix_sso
+action:
+  type: teamdynamix_expense_report_capture
+  form_url: https://teamdynamix.example.invalid/expense/request
+  submit_url: https://teamdynamix.example.invalid/expense/submit
+  confirmation_url_prefix: https://teamdynamix.example.invalid/requests/
+  form_id: 90001
+  reference_prefix: TDX
+  attachments:
+    field_name: files
+    allowed_extensions:
+      - .pdf
+      - .jpg
+      - .jpeg
+      - .png
+    max_files: 20
+    max_file_bytes: 20971520
+    max_total_bytes: 52428800
+  field_mappings:
+    reimbursement_for:
+      name: attribute90101
+      kind: select
+      choices:
+        employee: 91101
+    on_behalf_of:
+      name: attribute90102
+      kind: select
+      choices:
+        "false": 91102
+    submission_method:
+      name: attribute90104
+      kind: select
+      choices:
+        enter_in_eform: 91104
+        upload_completed_template: 91105
+    expense_categories:
+      name: attribute90105
+      kind: checklist
+      choices:
+        travel: 91106
+        hosting: 91107
+        other: 91108
+    payment_methods:
+      name: attribute90106
+      kind: checklist
+      choices:
+        university_card: 91109
+        cta_airfare: 91110
+        out_of_pocket: 91111
+        cash_advance: 91112
+    shortcode:
+      name: attribute90107
+      kind: text
+    cash_advance_number:
+      name: attribute90108
+      kind: text
+    travel_shortcode:
+      name: attribute90109
+      kind: text
+    travel_description:
+      name: attribute90110
+      kind: text
+    travel_start_date:
+      name: attribute90111
+      kind: date
+    travel_end_date:
+      name: attribute90112
+      kind: date
+    travel_reimbursement_types:
+      name: attribute90113
+      kind: checklist
+      choices:
+        mileage: 91113
+        per_diem: 91114
+    round_trip:
+      name: attribute90114
+      kind: select
+      choices:
+        "false": 91115
+        "true": 91116
+    start_location:
+      name: attribute90115
+      kind: text
+    end_location:
+      name: attribute90116
+      kind: text
+    third_party_meals:
+      name: attribute90117
+      kind: select
+      choices:
+        "false": 91117
+        "true": 91118
+    third_party_meal_details:
+      name: attribute90118
+      kind: text
+    travel_dept_ref:
+      name: attribute90119
+      kind: text
+    hosting_shortcode:
+      name: attribute90120
+      kind: text
+    hosting_description:
+      name: attribute90121
+      kind: text
+    hosting_dept_ref:
+      name: attribute90122
+      kind: text
+    attendee_list_method:
+      name: attribute90123
+      kind: select
+      choices:
+        attachment: 91119
+        in_ticket: 91120
+    attendees:
+      name: attribute90124
+      kind: text
+    alcohol_included:
+      name: attribute90125
+      kind: select
+      choices:
+        "false": 91121
+        "true": 91122
+    alcohol_shortcode:
+      name: attribute90126
+      kind: text
+    other_shortcode:
+      name: attribute90127
+      kind: text
+    other_description:
+      name: attribute90128
+      kind: text
+    other_dept_ref:
+      name: attribute90129
+      kind: text
+    over_60_day_handling:
+      name: attribute90130
+      kind: select
+      choices:
+        no: 91123
+        taxable_reimbursement: 91124
+        tax_department_review: 91125
+    attestation:
+      name: attribute90131
+      kind: checklist
+      choices:
+        self: 91126
+    delay_reason:
+      name: attribute90132
+      kind: text
+    additional_comments:
+      name: attribute90133.Content
+      kind: text
+contract:
+  input_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - submission_id
+      - fields
+      - attachments
+    properties:
+      submission_id:
+        type: string
+        pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$
+      fields:
+        type: object
+        additionalProperties: false
+        required:
+          - reimbursement_for
+          - on_behalf_of
+          - submission_method
+          - expense_categories
+          - payment_methods
+          - over_60_day_handling
+          - attestation
+        properties:
+          reimbursement_for:
+            enum:
+              - employee
+          on_behalf_of:
+            const: false
+          submission_method:
+            enum:
+              - enter_in_eform
+              - upload_completed_template
+          expense_categories:
+            type: array
+            minItems: 1
+            uniqueItems: true
+            items:
+              enum:
+                - travel
+                - hosting
+                - other
+          payment_methods:
+            type: array
+            minItems: 1
+            uniqueItems: true
+            items:
+              enum:
+                - university_card
+                - cta_airfare
+                - out_of_pocket
+                - cash_advance
+          shortcode:
+            type: string
+          cash_advance_number:
+            type: string
+          travel_shortcode:
+            type: string
+          travel_description:
+            type: string
+          travel_start_date:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+          travel_end_date:
+            type: string
+            pattern: ^\d{4}-\d{2}-\d{2}$
+          travel_reimbursement_types:
+            type: array
+            uniqueItems: true
+            items:
+              enum:
+                - mileage
+                - per_diem
+          round_trip:
+            type: boolean
+          start_location:
+            type: string
+          end_location:
+            type: string
+          third_party_meals:
+            type: boolean
+          third_party_meal_details:
+            type: string
+          travel_dept_ref:
+            type: string
+          hosting_shortcode:
+            type: string
+          hosting_description:
+            type: string
+          hosting_dept_ref:
+            type: string
+          attendee_list_method:
+            enum:
+              - attachment
+              - in_ticket
+          attendees:
+            type: string
+          alcohol_included:
+            type: boolean
+          alcohol_shortcode:
+            type: string
+          other_shortcode:
+            type: string
+          other_description:
+            type: string
+          other_dept_ref:
+            type: string
+          over_60_day_handling:
+            enum:
+              - no
+              - taxable_reimbursement
+              - tax_department_review
+          attestation:
+            const: self
+          delay_reason:
+            type: string
+          additional_comments:
+            type: string
+            maxLength: 10000
+      attachments:
+        type: array
+        minItems: 1
+        maxItems: 20
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - path
+          properties:
+            path:
+              type: string
+              pattern: ^/
+            name:
+              type: string
+              minLength: 1
+  output_schema:
+    type: object
+    additionalProperties: false
+    required:
+      - submission_id
+      - status
+      - capture_reference
+      - attachments
+    properties:
+      submission_id:
+        type: string
+      status:
+        const: captured
+      capture_reference:
+        type: string
+      attachments:
+        type: object
+        additionalProperties: false
+        required:
+          - requested
+          - captured
+          - items
+        properties:
+          requested:
+            type: integer
+            minimum: 1
+          captured:
+            type: integer
+            minimum: 1
+          items:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required:
+                - name
+                - status
+                - media_type
+                - bytes
+              properties:
+                name:
+                  type: string
+                status:
+                  const: captured
+                media_type:
+                  type: string
+                bytes:
+                  type: integer
+                  minimum: 0
