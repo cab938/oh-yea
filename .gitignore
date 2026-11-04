@@ -4,8 +4,7 @@ npm-debug.log*
 services/*/capabilities.json
 services/*/*.tmp
 config.yaml
-capabilities/*.yaml
-!capabilities/.gitkeep
+capabilities/
 *.sock
 coverage/
 logs/

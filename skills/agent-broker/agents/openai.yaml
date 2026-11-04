@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent Broker"
-  short_description: "Route tasks to broker service workflows"
-  default_prompt: "Use $agent-broker for my task, opening its login window if needed and following the discovered service workflow."
+  short_description: "Use broker services or add bounded capabilities"
+  default_prompt: "Use $agent-broker to carry out my service task, or follow its setup guide if I ask to add a service or capability."
