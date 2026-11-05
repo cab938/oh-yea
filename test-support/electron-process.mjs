@@ -28,6 +28,12 @@ export function signalGroup(group, signal = "SIGTERM") {
   catch (error) { if (error.code !== "ESRCH") throw error; }
 }
 
+export async function waitForGroupExit(group) {
+  const deadline = Date.now() + 5_000;
+  while (await groupAlive(group) && Date.now() < deadline) await wait(100);
+  return !(await groupAlive(group));
+}
+
 export async function stopGroup(group) {
   // Let the owning CLI/main process close its renderers and unlink the socket.
   // Killing every Chromium child at once can bypass graceful shutdown on Linux.
@@ -35,9 +41,7 @@ export async function stopGroup(group) {
     try { process.kill(group, "SIGTERM"); }
     catch (error) { if (error.code !== "ESRCH") throw error; }
   }
-  const deadline = Date.now() + 5_000;
-  while (await groupAlive(group) && Date.now() < deadline) await wait(100);
-  if (await groupAlive(group)) {
+  if (!(await waitForGroupExit(group))) {
     signalGroup(group, "SIGKILL");
     throw new Error("Owned Electron process group required forced teardown");
   }

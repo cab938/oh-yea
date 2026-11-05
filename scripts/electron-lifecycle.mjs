@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { installedElectron } from "../src/lib/desktop-launcher.mjs";
-import { temporaryRuntime, checkSmokePlatform, electronTestArgs, groupAlive, stopGroup, wait } from "../test-support/electron-process.mjs";
+import { temporaryRuntime, checkSmokePlatform, electronTestArgs, groupAlive, waitForGroupExit, stopGroup, wait } from "../test-support/electron-process.mjs";
 
 checkSmokePlatform();
 const exec = promisify(execFile);
@@ -39,7 +39,7 @@ async function run(mode, persistent = false) {
   const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
   assert.equal(code, 0, transcript);
   assert.ok(output.includes("LIFECYCLE_PASSED"), transcript);
-  assert.equal(await groupAlive(group), false, "lifecycle left an owned Electron process behind");
+  assert.equal(await waitForGroupExit(group), true, "lifecycle left an owned Electron process behind");
   await assert.rejects(fs.access(path.join(directory, "broker.sock")), { code: "ENOENT" });
   group = undefined;
 }
