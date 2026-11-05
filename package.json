@@ -30,6 +30,8 @@
     "preview": "node scripts/preview.mjs",
     "smoke": "node scripts/electron-smoke.mjs",
     "smoke:linux": "bash scripts/smoke-linux.sh",
+    "smoke:macos": "node scripts/smoke-macos.mjs",
+    "smoke:lifecycle": "node scripts/electron-lifecycle.mjs",
     "add-service-token": "node scripts/add-service-token.mjs",
     "test": "node --test",
     "check": "node --check bin/agent-broker.mjs && node --check src/main.mjs && node --check src/renderer/renderer.mjs && node --test"

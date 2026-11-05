@@ -1,7 +1,7 @@
 name: Portability checks
 on:
   push:
-    branches: [main, codex/macos-portability]
+    branches: [main, "codex/**"]
   pull_request:
 permissions:
   contents: read
@@ -27,23 +27,37 @@ jobs:
       - run: npm ci
       - run: npm run check
   smoke:
-    name: Electron smoke (Linux)
-    runs-on: ubuntu-24.04
+    name: Electron smoke (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, macos-15-intel]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
-      AGENT_BROKER_SMOKE_SCREENSHOT: /tmp/agent-broker-smoke.png
+      AGENT_BROKER_SMOKE_SCREENSHOT: output/smoke/screenshot.png
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
         with:
           node-version: "24"
           cache: npm
-      - run: sudo apt-get update && sudo apt-get install -y xvfb xauth dbus-x11 libgtk-3-0 libnss3 libasound2t64
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xvfb xauth dbus-x11 libgtk-3-0 libnss3 libasound2t64
       - run: npm ci
-      - run: npm run smoke:linux
+      - run: npx install-electron --no
+      - name: Run native fixture and lifecycle tests
+        shell: bash
+        run: |
+          mkdir -p output/smoke
+          if [ "$RUNNER_OS" = Linux ]; then
+            npm run smoke:linux 2>&1 | tee output/smoke/run.log
+          else
+            npm run smoke:macos 2>&1 | tee output/smoke/run.log
+          fi
       - uses: actions/upload-artifact@v6
         if: always()
         with:
-          name: smoke-linux
-          path: ${{ runner.temp }}/agent-broker-smoke.png
+          name: smoke-${{ matrix.os }}
+          path: output/smoke/
           if-no-files-found: ignore

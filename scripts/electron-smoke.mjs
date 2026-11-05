@@ -9,18 +9,16 @@ import { fileURLToPath } from "node:url";
 import { requestOnce } from "../src/lib/broker-client.mjs";
 import { stringify } from "yaml";
 import { readTemplates } from "../test-support/templates.mjs";
+import { temporaryRuntime, groupAlive, signalGroup, stopGroup, electronTestArgs, checkSmokePlatform } from "../test-support/electron-process.mjs";
 
-if (process.env.AGENT_BROKER_SMOKE_HEADFUL === "1" &&
-    (!/^:(?:9\d|10\d|11\d)$/.test(process.env.DISPLAY ?? "") ||
-     !path.basename(path.dirname(process.env.XAUTHORITY ?? "")).startsWith("native-x11-headless-session."))) {
-  throw new Error("Visible startup checks require the private Xvfb harness");
-}
+checkSmokePlatform();
 
 const execFileAsync = promisify(execFile);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const screenshot =
   process.env.AGENT_BROKER_SMOKE_SCREENSHOT ??
   path.join(os.tmpdir(), "agent-broker-smoke.png");
+await fs.mkdir(path.dirname(screenshot), { recursive: true });
 
 function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -427,9 +425,7 @@ const authFixture = http.createServer((_request, response) => {
 
 address = await listen(fixture);
 authAddress = await listen(authFixture);
-const directory = await fs.mkdtemp(
-  path.join(os.tmpdir(), "agent-broker-electron-"),
-);
+const directory = await temporaryRuntime();
 const socket = path.join(directory, "broker.sock");
 const config = `version: 1
 authentications:
@@ -522,11 +518,7 @@ const brokerEnv = {
 };
 delete brokerEnv.AGENT_BROKER_CONFIG;
 delete brokerEnv.AGENT_BROKER_TOKEN;
-const launchArgs = [
-  ...(process.env.AGENT_BROKER_SMOKE_HEADFUL === "1" ? [] : ["--headless"]),
-  "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
-];
-const pidFile = path.join(directory, "launch.pid");
+const launchArgs = electronTestArgs();
 const stderrFile = path.join(directory, "electron.stderr");
 let processGroup;
 let smokeStage = "closed discovery";
@@ -540,16 +532,10 @@ async function runCli(args) {
   }
 }
 function signalBroker(signal) {
-  if (!processGroup) return;
-  try { process.kill(-processGroup, signal); }
-  catch (error) { if (error.code !== "ESRCH") throw error; }
+  signalGroup(processGroup, signal);
 }
 async function brokerProcessesRemain() {
-  const { stdout } = await execFileAsync("ps", ["-eo", "pgid=,stat="]);
-  return stdout.trim().split("\n").some((line) => {
-    const [group, state] = line.trim().split(/\s+/);
-    return Number(group) === processGroup && !state.startsWith("Z");
-  });
+  return groupAlive(processGroup);
 }
 process.once("exit", () => signalBroker("SIGTERM"));
 
@@ -559,21 +545,16 @@ try {
     throw new Error("Closed discovery did not return JSON BROKER_UNAVAILABLE");
   }
   smokeStage = "detached visual startup";
-  // Record the owned process group before exec solely for deterministic test teardown.
-  // The command after this bookkeeping is the installed CLI under setsid --fork.
+  // Node supplies the owned process group on both Linux and macOS.
   const output = await fs.open(stderrFile, "w", 0o600);
   try {
     await new Promise((resolve, reject) => {
-      const launcher = spawn("setsid", ["--fork", "sh", "-c",
-        'echo $$ > "$1"; shift; exec "$@"', "broker-smoke", pidFile,
-        "agent-broker", ...launchArgs,
-      ], { cwd: root, env: brokerEnv, timeout: 5_000, stdio: ["ignore", output.fd, output.fd] });
+      const launcher = spawn(process.execPath, [path.join(root, "bin/agent-broker.mjs"), ...launchArgs],
+        { cwd: root, env: brokerEnv, detached: true, stdio: ["ignore", output.fd, output.fd] });
       launcher.once("error", reject);
-      launcher.once("exit", (code) => code === 0 ? resolve() : reject(new Error(`Detached launcher exited ${code}`)));
+      launcher.once("spawn", () => { processGroup = launcher.pid; launcher.unref(); resolve(); });
     });
   } finally { await output.close(); }
-  await waitForFile(pidFile);
-  processGroup = Number((await fs.readFile(pidFile, "utf8")).trim());
   if (!Number.isSafeInteger(processGroup) || processGroup <= 1) throw new Error("Invalid detached test process group");
   const deadline = Date.now() + 30_000;
   let ready = false;
@@ -676,7 +657,7 @@ try {
   }
   smokeStage = "reusing and focusing the authenticated instance";
   let windowId;
-  if (process.env.AGENT_BROKER_SMOKE_HEADFUL === "1") {
+  if (process.platform === "linux" && process.env.AGENT_BROKER_SMOKE_HEADFUL === "1") {
     const { stdout } = await execFileAsync("xdotool", ["search", "--onlyvisible", "--name", "^agent-broker$"], { env: brokerEnv });
     const windows = stdout.trim().split("\n");
     if (windows.length !== 1) throw new Error("Expected one visible control plane");
@@ -893,18 +874,20 @@ try {
     `Electron smoke passed; detached startup, single-instance reuse, discovery, output validation, bounded authentication backoff, authenticated JSON, hidden browser JSON, UM GPT reads and one authenticated WebSocket send, duplicate-send protection, TeamDynamix expense capture without POST, persisted logging, and expense submission succeeded; screenshot saved to ${screenshot}\n`,
   );
 } catch (error) {
+  await fs.writeFile(`${screenshot}.diagnostics.txt`, [
+    `Smoke stage: ${smokeStage}`, error.stack,
+    await fs.readFile(stderrFile, "utf8").catch(() => ""),
+    await fs.readFile(path.join(directory, "logs/agent-broker.jsonl"), "utf8").catch(() => ""),
+  ].join("\n"), { mode: 0o600 });
   process.stderr.write(
     `${error.message}\nSmoke stage: ${smokeStage}\nAuthentication fixture requests: ${JSON.stringify(authenticationFixtureRequests)}\nBrowser fixture requests: ${JSON.stringify(browserFixtureRequests)}\nExpense fixture requests: ${JSON.stringify(expenseFixtureRequests)}\n${await fs.readFile(stderrFile, "utf8").catch(() => "")}`,
   );
   process.exitCode = 1;
 } finally {
-  signalBroker("SIGTERM");
-  const deadline = Date.now() + 5_000;
-  while (processGroup && await brokerProcessesRemain() && Date.now() < deadline) await wait(100);
-  if (processGroup && await brokerProcessesRemain()) {
-    signalBroker("SIGKILL");
+  try { await stopGroup(processGroup); }
+  catch (error) {
     process.exitCode = 1;
-    process.stderr.write("Detached broker required forced teardown\n");
+    process.stderr.write(`${error.message}\n`);
   }
   processGroup = undefined;
   await close(fixture);

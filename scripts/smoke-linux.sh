@@ -5,7 +5,8 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 # The workstation's prescribed harness already supplies a private display.
 # electron-smoke checks its authority and reserved display before launching.
 if [[ "${AGENT_BROKER_SMOKE_HEADFUL:-0}" == 1 ]]; then
-  exec node scripts/electron-smoke.mjs
+  node scripts/electron-smoke.mjs
+  exec node scripts/electron-lifecycle.mjs
 fi
 
 for task_command in xvfb-run dbus-run-session; do
@@ -17,4 +18,4 @@ done
 
 exec xvfb-run -a -n 90 -s '-screen 0 1600x1000x24 -nolisten tcp' \
   dbus-run-session -- env -u WAYLAND_DISPLAY AGENT_BROKER_SMOKE_HEADFUL=0 \
-  node scripts/electron-smoke.mjs
+  sh -c 'node scripts/electron-smoke.mjs && node scripts/electron-lifecycle.mjs'
