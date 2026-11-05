@@ -29,7 +29,12 @@ export function signalGroup(group, signal = "SIGTERM") {
 }
 
 export async function stopGroup(group) {
-  signalGroup(group);
+  // Let the owning CLI/main process close its renderers and unlink the socket.
+  // Killing every Chromium child at once can bypass graceful shutdown on Linux.
+  if (Number.isSafeInteger(group) && group > 1) {
+    try { process.kill(group, "SIGTERM"); }
+    catch (error) { if (error.code !== "ESRCH") throw error; }
+  }
   const deadline = Date.now() + 5_000;
   while (await groupAlive(group) && Date.now() < deadline) await wait(100);
   if (await groupAlive(group)) {

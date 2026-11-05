@@ -626,12 +626,15 @@ test("serializes concurrent use of one submission ID before the form POST", asyn
   const temporary = await temporaryExpense(t);
   let calls = 0;
   let release;
+  let enteredPost;
+  const postStarted = new Promise((resolve) => { enteredPost = resolve; });
   const blocked = new Promise((resolve) => {
     release = resolve;
   });
   const options = {
     fetch: async () => {
       calls += 1;
+      enteredPost();
       await blocked;
       return new Response(null, {
         status: 302,
@@ -648,13 +651,16 @@ test("serializes concurrent use of one submission ID before the form POST", asyn
   };
 
   const first = executeTeamDynamixExpenseReport(options);
-  await new Promise((resolve) => setImmediate(resolve));
+  // Wait for the first reservation instead of assuming filesystem I/O completes
+  // in one event-loop turn. Either caller can win that race on a fast Linux host.
+  await Promise.race([postStarted, first.then(() => { throw new Error("First submission completed before its POST gate"); })]);
   const second = executeTeamDynamixExpenseReport(options);
-  await assert.rejects(second, (error) => {
-    assert.equal(error.code, "SUBMISSION_ALREADY_ATTEMPTED");
-    return true;
-  });
-  release();
+  try {
+    await assert.rejects(second, (error) => {
+      assert.equal(error.code, "SUBMISSION_ALREADY_ATTEMPTED");
+      return true;
+    });
+  } finally { release(); }
   await first;
   assert.equal(calls, 1);
 });
