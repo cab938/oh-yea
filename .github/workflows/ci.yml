@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      AGENT_BROKER_SMOKE_SCREENSHOT: ${{ runner.temp }}/agent-broker-smoke.png
+      AGENT_BROKER_SMOKE_SCREENSHOT: /tmp/agent-broker-smoke.png
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
