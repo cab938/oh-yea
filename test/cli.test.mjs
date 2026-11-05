@@ -151,6 +151,9 @@ test("CLI services returns public file pointers without loading or revealing ser
     assert.equal(text.includes("requestHeaders"),false);
   }
   assert.equal(result.stdout.includes(".env"),false);
+  const started = await runCli(["start"], { AGENT_BROKER_HOME: directory, DISPLAY: "", WAYLAND_DISPLAY: "" });
+  assert.equal(started.code, 0, started.stdout);
+  assert.deepEqual(JSON.parse(started.stdout).data, { status: "already_running", pid: null });
 });
 
 test("CLI inspects the browser without a capability token", async (t) => {

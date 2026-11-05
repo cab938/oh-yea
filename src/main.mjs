@@ -67,6 +67,9 @@ let authenticationManager;
 let authenticationRefreshTimer;
 let sessionPersistence;
 let browserJsonWorker;
+let quitting = false;
+let shutdown;
+let shutdownComplete = false;
 
 function capabilityState() {
   return {
@@ -817,6 +820,9 @@ function createWindow() {
     browserJsonWorker?.close();
     browserJsonWorker = null;
     mainWindow = null;
+    // Authentication popups and the hidden worker must not keep a headless
+    // broker alive after the operator closes its control plane.
+    if (!quitting) app.quit();
   });
 }
 
@@ -919,11 +925,17 @@ async function start() {
   );
 
   app.on("activate", () => {
-    if (!mainWindow) createWindow();
+    if (!quitting && mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
   });
 }
 
 app.on("before-quit", () => {
+  if (quitting) return;
+  quitting = true;
   rendererReady = false;
   executor.rejectAll("The control plane is shutting down");
   browserJsonWorker?.close();
@@ -937,22 +949,27 @@ app.on("before-quit", () => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (!quitting) app.quit();
 });
 
+for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => app.quit());
+
 app.on("will-quit", (event) => {
-  if (broker?.server || sessionPersistence) {
-    event.preventDefault();
-    const stopping = broker;
-    broker = null;
-    const persistence = sessionPersistence;
-    sessionPersistence = null;
-    persistence?.stop();
-    void Promise.allSettled([
-      stopping?.stop(),
-      persistence?.flush(),
-    ]).finally(() => app.quit());
-  }
+  if (shutdownComplete) return;
+  event.preventDefault();
+  if (shutdown) return;
+  const stopping = broker;
+  broker = null;
+  const persistence = sessionPersistence;
+  sessionPersistence = null;
+  persistence?.stop();
+  shutdown = Promise.allSettled([
+    stopping?.stop(),
+    persistence?.flush(),
+  ]).finally(() => {
+    shutdownComplete = true;
+    app.quit();
+  });
 });
 
 start().catch((error) => {

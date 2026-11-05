@@ -118,3 +118,29 @@ test("reloading from a watcher does not create a chmod feedback loop", async (t)
   await new Promise((resolve) => setTimeout(resolve, 400));
   assert.equal(changes, 1);
 });
+
+test("observes immediate create, atomic replacement, and removal in a newly watched directory", async (t) => {
+  const directory = await temporaryDirectory(t);
+  const target = path.join(directory, "example.yaml");
+  let changes = 0;
+  const watcher = watchCapabilityDirectory(directory, () => { changes++; });
+  t.after(() => watcher.stop());
+  async function observed(action) {
+    const before = changes;
+    await action();
+    const deadline = Date.now() + 2_000;
+    while (changes === before && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 25));
+    assert.ok(changes > before, "watcher missed an external capability edit");
+  }
+  await observed(() => fs.writeFile(target, "enabled: false\n"));
+  await observed(async () => {
+    await fs.writeFile(`${target}.tmp`, "enabled: true\n");
+    await fs.rename(`${target}.tmp`, target);
+  });
+  await observed(() => fs.unlink(target));
+  watcher.stop();
+  const stopped = changes;
+  await fs.writeFile(target, "enabled: false\n");
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  assert.equal(changes, stopped, "stopped watcher still emitted changes");
+});

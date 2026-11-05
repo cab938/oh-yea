@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { connectSocket, requestOnce } from "../src/lib/broker-client.mjs";
 import { resolveCallerToken } from "../src/lib/caller-token.mjs";
 import { runtimePaths } from "../src/lib/paths.mjs";
+import { startBroker } from "../src/lib/desktop-launcher.mjs";
 
 const require = createRequire(import.meta.url);
 const projectRoot = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -16,6 +17,7 @@ function usage() {
 
 Usage:
   agent-broker
+  agent-broker start [-- ELECTRON_OPTIONS]
   agent-broker capabilities
   agent-broker services
   agent-broker connect
@@ -28,6 +30,7 @@ Usage:
 
 Commands:
   (none)       Open the Electron control plane
+  start        Start once in the background; wait up to 30 seconds for discovery
   capabilities Return the known capability contracts as JSON
   services     Refresh public service contracts and return workflow/file pointers
   connect      Bridge JSON Lines on stdin/stdout, or send one request with flags
@@ -257,10 +260,26 @@ function launchElectron(args) {
   child.on("exit", (code, signal) => {
     process.exitCode = signal ? 1 : (code ?? 0);
   });
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    const forward = () => child.kill(signal);
+    process.on(signal, forward);
+    child.once("exit", () => process.off(signal, forward));
+  }
 }
 
 async function main() {
   const [command, ...args] = process.argv.slice(2);
+  if (command === "start") {
+    try {
+      if (args.length && args[0] !== "--") throw Object.assign(new Error("Pass Electron options after --"), { code: "INVALID_ARGUMENT" });
+      const data = await startBroker({ socketPath: runtimePaths().socket, projectRoot, electronArgs: args.slice(1) });
+      process.stdout.write(`${JSON.stringify({ id: null, ok: true, data, meta: { operation: "start" } })}\n`);
+    } catch (error) {
+      process.stdout.write(`${JSON.stringify({ id: null, ok: false, error: { code: error.code ?? "STARTUP_FAILED", message: error.message } })}\n`);
+      process.exitCode = 1;
+    }
+    return;
+  }
   if (command === "connect") {
     process.exitCode = await connectCommand(args);
     return;

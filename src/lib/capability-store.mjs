@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import { watch } from "node:fs";
+import { watch, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { parseCapability } from "./config.mjs";
 
@@ -116,17 +116,42 @@ export function watchCapabilityDirectory(
   onError = () => {},
 ) {
   let timer = null;
-  const watcher = watch(directory, { persistent: false }, () => {
+  // FSEvents can omit changes made immediately after watching a new directory.
+  // A bounded metadata poll supplements native notifications on macOS only.
+  function version() {
+    return readdirSync(directory).filter((name) => name.endsWith(".yaml")).sort().map((name) => {
+      try {
+        const stat = statSync(path.join(directory, name), { bigint: true });
+        return `${name}:${stat.mtimeNs}:${stat.size}`;
+      } catch (error) {
+        if (error.code === "ENOENT") return "";
+        throw error;
+      }
+    }).join("\n");
+  }
+  let previous = process.platform === "darwin" ? version() : null;
+  function changed() {
+    if (previous !== null) {
+      try {
+        const next = version();
+        if (next === previous) return;
+        previous = next;
+      } catch (error) { onError(error); return; }
+    }
     clearTimeout(timer);
     timer = setTimeout(() => {
       timer = null;
       Promise.resolve(onChange()).catch(onError);
     }, 100);
-  });
+  }
+  const watcher = watch(directory, { persistent: false }, changed);
   watcher.on("error", onError);
+  const poll = process.platform === "darwin" ? setInterval(changed, 500) : null;
+  poll?.unref();
   return {
     stop() {
       clearTimeout(timer);
+      clearInterval(poll);
       watcher.close();
     },
   };
