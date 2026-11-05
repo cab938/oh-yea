@@ -41,14 +41,25 @@ try {
   await auth.cookies.set({ url: "http://127.0.0.1", name: "lifecycle-fixture", value: "fixture-only" });
 
   if (mode === "close") {
+    const events = [];
+    const state = () => ({ pid: process.pid, visible: main.isVisible(), focused: main.isFocused(), minimized: main.isMinimized(), focusable: main.isFocusable(), ...(process.platform === "darwin" ? { hidden: app.isHidden(), dock: app.dock.isVisible() } : {}) });
+    for (const event of ["focus", "blur", "minimize", "restore", "show"]) main.on(event, () => events.push({ event, ...state() }));
+    app.on("second-instance", () => events.push({ event: "second-instance", ...state() }));
     main.minimize();
     if (!process.argv.includes("--headless")) await until(() => main.isMinimized());
+    let refocused = false;
+    main.once("focus", () => { refocused = true; });
     const { stdout } = await exec(process.env.AGENT_BROKER_TEST_NODE, [path.join(root, "bin/agent-broker.mjs"), ...electronTestArgs()], {
       cwd: root, env: process.env, timeout: 10_000,
     });
     assert.equal(stdout.trim(), "");
     await until(() => !main.isMinimized());
-    if (!process.argv.includes("--headless")) await until(() => main.isFocused());
+    // Record the focus event: a user can switch apps after the CLI brings this
+    // window forward, before the parent test process samples its current state.
+    if (!process.argv.includes("--headless")) {
+      try { await until(() => refocused); }
+      catch { throw new Error(`Second launch did not focus its window: ${JSON.stringify({ events, state: state() })}`); }
+    }
     assert.equal((await auth.cookies.get({ name: "lifecycle-fixture" })).length, 1);
     assert.equal(BrowserWindow.getAllWindows().filter((window) => window.getTitle() === "agent-broker").length, 1);
     const log = fs.readFileSync(path.join(process.env.AGENT_BROKER_HOME, "logs/agent-broker.jsonl"), "utf8");

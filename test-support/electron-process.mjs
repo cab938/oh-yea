@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { promisify } from "node:util";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -43,6 +43,7 @@ export async function stopGroup(group) {
   }
   if (!(await waitForGroupExit(group))) {
     signalGroup(group, "SIGKILL");
+    await waitForGroupExit(group);
     throw new Error("Owned Electron process group required forced teardown");
   }
 }
@@ -56,6 +57,9 @@ export function electronTestArgs() {
 
 export function checkSmokePlatform() {
   if (!["linux", "darwin"].includes(process.platform)) throw new Error("Electron smoke supports Linux and macOS");
+  if (process.platform === "darwin" && /IOConsoleLocked"\s*=\s*Yes/.test(
+    execFileSync("/usr/sbin/ioreg", ["-n", "Root", "-d1"], { encoding: "utf8" }),
+  )) throw new Error("Unlock the macOS desktop before running native Electron focus checks");
   if (process.platform === "linux" && process.env.AGENT_BROKER_SMOKE_HEADFUL === "1" &&
       (!/^:(?:9\d|10\d|11\d)$/.test(process.env.DISPLAY ?? "") ||
        !path.basename(path.dirname(process.env.XAUTHORITY ?? "")).startsWith("native-x11-headless-session."))) {

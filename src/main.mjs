@@ -826,6 +826,15 @@ function createWindow() {
   });
 }
 
+function focusMainWindow() {
+  if (quitting || !mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  // macOS may restore a minimized window without activating its application.
+  if (process.platform === "darwin") app.focus({ steal: true });
+  mainWindow.focus();
+}
+
 async function start() {
   app.setName("agent-broker");
   await fs.mkdir(paths.directory, { recursive: true, mode: 0o700 });
@@ -837,12 +846,7 @@ async function start() {
     return;
   }
 
-  app.on("second-instance", () => {
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.focus();
-    }
-  });
+  app.on("second-instance", focusMainWindow);
 
   await app.whenReady();
   await loadConfiguration();
@@ -924,13 +928,7 @@ async function start() {
     authenticationRefreshMs,
   );
 
-  app.on("activate", () => {
-    if (!quitting && mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
+  app.on("activate", focusMainWindow);
 }
 
 app.on("before-quit", () => {
@@ -956,6 +954,8 @@ for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => app.quit())
 
 app.on("will-quit", (event) => {
   if (shutdownComplete) return;
+  // A secondary instance has no resources to flush and should exit immediately.
+  if (!shutdown && !broker?.server && !sessionPersistence) return;
   event.preventDefault();
   if (shutdown) return;
   const stopping = broker;

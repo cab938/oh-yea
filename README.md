@@ -125,7 +125,7 @@ npm run smoke:linux   # Linux, on a private Xvfb display
 npm run smoke:macos   # macOS, in the logged-in native desktop session
 ```
 
-The Linux smoke needs `xvfb-run`, `xauth`, and `dbus-run-session`, supplied on Debian/Ubuntu by `xvfb`, `xauth`, and `dbus-x11`. It uses a private display and D-Bus session. The Mac smoke opens native Electron windows and requires no Accessibility permissions. Both use only local fixture services and short private temporary runtime homes, never the operator's configuration or real accounts. Run these tests serially on a desktop.
+The Linux smoke needs `xvfb-run`, `xauth`, and `dbus-run-session`, supplied on Debian/Ubuntu by `xvfb`, `xauth`, and `dbus-x11`. It uses a private display and D-Bus session. The Mac smoke opens native Electron windows and requires an unlocked desktop; it checks the screen-lock prerequisite before launching and requires no Accessibility permissions. Both use only local fixture services and short private temporary runtime homes, never the operator's configuration or real accounts. Run these tests serially on a desktop.
 
 Both commands include fixture integration and lifecycle checks: detached startup, discovery, single-instance reuse, authentication, output validation, simulated service writes, window restore/focus, close with a popup open, Quit, terminal signals, ephemeral restart, and explicit development-cookie flush. Forced teardown or surviving owned processes fails the run. `npm run smoke:lifecycle` runs just the lifecycle checks inside the appropriate desktop harness.
 
