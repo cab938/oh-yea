@@ -27,6 +27,7 @@ Follow `../AGENTS.md` when working in this workspace. [README.md](README.md) is 
 | `src/lib/capability-executor.mjs` | Finite dispatch using current profiles and browser surfaces; no adapter registry |
 | `src/lib/authentication-manager.mjs` | Shared checks, coalescing, deadlines, polling, silent handoffs, waits |
 | `src/lib/paths.mjs` | Shared CLI/app runtime locations |
+| `src/lib/desktop-launcher.mjs` | Installed Electron resolution, desktop prerequisites, detached startup, bounded discovery |
 | `src/lib/services.mjs` | Workflow discovery and fresh redacted contract publication |
 | `services/SERVICE_ID/workflow.md` | Canonical service procedure and approval rules |
 | `services/SERVICE_ID/templates/` | Disabled sanitized capability examples reused by tests |
@@ -34,7 +35,7 @@ Follow `../AGENTS.md` when working in this workspace. [README.md](README.md) is 
 
 Normal writable state belongs under `${XDG_CONFIG_HOME:-~/.config}/agent-broker`: authentication `config.yaml`, `.env`, private `capabilities/`, workflow copies/generated contracts, logs, journals, socket, and optional development browser state. `AGENT_BROKER_HOME` overrides that home. `AGENT_BROKER_CONFIG` selects a different authentication file with capability YAML and `.env` beside it; other state remains in the home. Installed source, templates, workflows, and icons are resources.
 
-Use mode `0700` for private directories and `0600` for private files. Capability YAML is watched; valid edits apply automatically, while invalid files remain visible but unavailable. Change permissions only when modes differ, avoiding watcher feedback loops. Profile edits apply through the Authentication editor or a deliberate restart; token and broker code changes require a restart.
+Use mode `0700` for private directories and `0600` for private files. Capability YAML is watched; valid edits apply automatically, while invalid files remain visible but unavailable. On macOS a metadata poll supplements FSEvents, which can omit immediate changes in newly watched directories. Stop both notification paths on shutdown. Change permissions only when modes differ, avoiding watcher feedback loops. Profile edits apply through the Authentication editor or a deliberate restart; token and broker code changes require a restart. Keep the same default runtime locations on Linux and macOS; do not migrate Mac configuration to a different home.
 
 A first launch has an empty authentication map and no enabled capabilities. Do not install, merge, enable, or replace configuration at startup or during tests. An explicit setup request may configure only the requested service/capabilities, following the authoring guide. Use `npm run add-service-token -- SERVICE_ID` to provision a token without exposing or rotating existing values. Read `.env` as data only, never source or export it.
 
@@ -44,7 +45,7 @@ Public catalogs contain only names, service IDs, descriptions, enabled state, an
 
 ## Agent use and configuration
 
-The skill routes ordinary requests through discovery and only the selected workflow/contracts. It starts a stopped broker once using its documented Linux startup procedure, waits at most 30 seconds for discovery, and reuses an existing instance. Failed startup or missing prerequisites means report and stop, not install/restart software as recovery.
+The skill routes ordinary requests through discovery and only the selected workflow/contracts. `agent-broker start` reuses a responding broker or starts installed Electron once with Node-managed detachment and waits at most 30 seconds for discovery. Its JSON envelope returns a startup status and the newly owned PID (null on reuse). It requires a desktop display on Linux or a graphical login session on macOS. It must not download Electron, read tokens, or retry a launch. Failed startup or missing prerequisites means report and stop, not install/restart software as recovery. Foreground CLI startup remains available; operator Electron options follow `start --` for background startup.
 
 One-shot `agent-broker connect` resolves the service and reads its token internally. Agents never read or supply tokens. Long-lived callers supply a service token in each request. Explicit token overrides remain operator-only. Keep the same pending invocation during human login; never replay a possible mutation after a disconnect.
 
@@ -53,6 +54,7 @@ Explicit requests to add or configure access use the skill's authoring guide. Th
 ## Browser and authentication invariants
 
 - Use the ephemeral `agent-broker-auth` partition by default. Normal startup clears legacy persistent storage/cache/authentication and removes the development cookie snapshot before opening a browser surface.
+- Closing the main control-plane window quits on Linux and macOS even when a popup remains. Quit and terminal signals share cleanup; repeated quit requests must wait for the same socket shutdown and optional persistence flush. Do not recreate windows during shutdown or retry interrupted writes. A second launch restores/focuses the existing window without resetting authentication.
 - Only `AGENT_BROKER_DEV_PERSIST_AUTH=1` selects persistence, restores/mirrors the mode-0600 development snapshot, and shows `DEV · AUTH PERSISTENCE`.
 - The visible operator browser and unmapped hidden worker share a partition. Hidden work must never replace or move the visible browser. Visible CSS and hidden browser-JSON work have separate serialized surfaces; direct authenticated JSON navigates neither.
 - Profiles are reusable application sessions. Profiles in one `sign_in_group` keep separate probes but share one readiness indicator. Refresh only profiles referenced by enabled capabilities: at startup, every five minutes, and for authorized calls. Coalesce concurrent checks.
@@ -73,10 +75,13 @@ Keep the renderer compact: light system styling, readable fonts, square controls
 
 ```bash
 npm ci
+npx install-electron --no
 npm link
 npm start
+agent-broker start
 npm run check
 npm run smoke:linux
+npm run smoke:macos
 npm run preview
 npm run add-service-token -- SERVICE_ID
 agent-broker services
@@ -91,6 +96,6 @@ agent-broker inspect network --limit 20
 
 For changes, update README and these instructions when behavior/boundaries change. Update and validate the bundled skill when agent-facing behavior changes. Add or adjust focused protocol, authorization, or configuration tests when those behaviors change, and run `npm run check`.
 
-Renderer or extraction implementation changes require the Electron smoke. All automated Electron UI checks on the Thelio must use the installed `testing-native-xwindows-apps-on-thelio` skill and its private Xvfb harness, including `smoke:linux` in headful test mode. Inspect a desktop-sized screenshot and confirm teardown. Never launch a test on the inherited display. A user's request to use the broker authorizes its visible login window, not desktop UI testing.
+Renderer, extraction, startup, or lifecycle implementation changes require the Electron smoke. All automated Electron UI checks on the Thelio must use the installed `testing-native-xwindows-apps-on-thelio` skill and its private Xvfb harness, including `smoke:linux` in headful test mode. On macOS, an explicit desktop-testing request authorizes `smoke:macos` in the logged-in native desktop; it uses direct Electron APIs without Accessibility automation or a debugging port. Inspect a desktop-sized screenshot and confirm teardown. On Linux never launch a test on the inherited display. A user's request to use the broker authorizes its visible login window, not desktop UI testing.
 
-The Linux smoke uses local fixtures, standard Xvfb/D-Bus tools, and an isolated home. Do not turn tests into live external-account writes. Keep the `package.json` source allowlist free of runtime data and output experiments.
+The Linux smoke uses local fixtures, standard Xvfb/D-Bus tools, and an isolated home. Mac tests reuse the fixture assertions and native lifecycle checks with short private socket paths. Preserve the Linux safeguards and assertions when changing shared tests. Forced process-group cleanup is a test failure. CI checks Ubuntu and both Mac architectures with Node 22.12 and 24, including Electron smoke on Node 24. Do not turn tests into live external-account writes. Keep the `package.json` source allowlist free of runtime data and output experiments.

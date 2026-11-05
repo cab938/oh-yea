@@ -22,14 +22,13 @@ Read the JSON envelope: `ok: true` puts service records in `data`; `ok: false` p
 
 If discovery succeeds, reuse the running broker. Only if this initial discovery returns `BROKER_UNAVAILABLE` with "The agent-broker control plane is not running":
 
-1. Check that `agent-broker`, `setsid`, and a desktop display (`DISPLAY` or `WAYLAND_DISPLAY`) are available.
-2. Launch once on Linux:
+1. Run the portable startup command once:
 
    ```bash
-   setsid --fork agent-broker </dev/null >/dev/null 2>&1
+   agent-broker start
    ```
 
-3. Poll `agent-broker services` for at most 30 seconds. If startup fails, a prerequisite is missing, or discovery reports a different error, report it and stop.
+2. Keep this invocation pending for up to 30 seconds while it waits for discovery. Require `ok: true` and `data.status` equal to `started` or `already_running`, then refresh `agent-broker services`. A new instance requires a Linux desktop display or a macOS graphical login session and an already installed Electron binary. If startup fails, a prerequisite is missing, or discovery reports a different error, report it and stop. Never replace the command with Linux-specific shell detachment or bypass its prerequisite checks.
 
 A request to use the broker authorizes its visible window and human login when needed. Never install software, restart a running broker, or relaunch repeatedly as error recovery.
 

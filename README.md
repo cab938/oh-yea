@@ -2,23 +2,31 @@
 
 A local, human-supervised bridge between agents and authenticated web applications. Agents request named capabilities with JSON input. The broker checks service permissions, uses private configured routing, and releases only schema-validated results.
 
-This is a Linux desktop prototype for one operator and cooperative processes under the same Unix account.
+This is a Linux and macOS desktop prototype for one operator and cooperative processes under the same Unix account.
 
 ## Install
 
-Use Node.js 22.12 or newer, npm, and a Linux desktop capable of running Electron:
+Use Node.js 22.12 or newer, npm, and a logged-in Linux or macOS desktop capable of running Electron. Native Apple silicon and Intel Macs are supported. macOS needs no XQuartz or GNU utilities.
 
 ```bash
 git clone https://github.com/cab938/oh-yea.git
 cd oh-yea
 npm ci
-npm link
+npx install-electron --no
+npm_config_prefix="$HOME/.local" npm link
+export PATH="$HOME/.local/bin:$PATH"
 agent-broker
 ```
+
+These commands install dependencies and link the CLI locally; they do not publish to npm. Add the PATH setting to your shell configuration if you want the CLI available in new terminals. `npm start` also opens the app directly from the checkout.
 
 Keep the checkout in place: the linked CLI uses it. A first launch has no configured capabilities. Choose a maintained service below and follow the [setup guide](skills/agent-broker/references/add-service.md#5-install-the-requested-private-definitions). Templates stay disabled until their private routing is configured and they are deliberately enabled.
 
 The Browser pane handles human sign-in and 2FA. The Configuration pane edits capabilities and authentication profiles. A second launch focuses the existing window; closing it exits the broker.
+
+`agent-broker start` starts once in the background and waits up to 30 seconds for service discovery. Its JSON envelope returns `data.status: "started"` and the owned Electron `pid`, or `"already_running"` with `pid: null`. Failures return `ok: false` and a nonzero exit status; startup never retries a launch. It reuses an existing broker without requiring a desktop or loading tokens. A new Linux instance requires `DISPLAY` or `WAYLAND_DISPLAY`; a new Mac instance requires a graphical login session. The Electron binary must already be installed. Operator Electron options can follow `start --`, as with foreground startup; ordinary agent startup needs none.
+
+Closing the main window, Quit, SIGINT, and SIGTERM stop the broker, its popups, workers, and socket on both platforms. A restart begins a new ephemeral authentication session by default.
 
 ## Use with an agent
 
@@ -27,7 +35,11 @@ Install the [agent-broker skill](skills/agent-broker/SKILL.md) in your agent's s
 ```bash
 skill_destination="${CODEX_HOME:-$HOME/.codex}/skills/agent-broker"
 mkdir -p "$(dirname "$skill_destination")"
-ln -sT "$PWD/skills/agent-broker" "$skill_destination"
+if [ -e "$skill_destination" ] || [ -L "$skill_destination" ]; then
+  printf 'Keep or review the existing installation at %s\n' "$skill_destination"
+else
+  ln -s "$PWD/skills/agent-broker" "$skill_destination"
+fi
 ```
 
 Keep an existing link to this checkout. Review a different installation at that name before replacing it.
@@ -70,7 +82,7 @@ The service workflow owns approval rules. Expense submission needs separate appr
 
 ## Private runtime files
 
-Normal writable state lives under `${XDG_CONFIG_HOME:-~/.config}/agent-broker`:
+Normal writable state lives under `${XDG_CONFIG_HOME:-~/.config}/agent-broker` on both Linux and macOS (including Macs with no `XDG_CONFIG_HOME`):
 
 | Path | Purpose |
 | --- | --- |
@@ -109,10 +121,17 @@ This is an operator interface, not an agent capability. It opens no TCP debuggin
 
 ```bash
 npm run check
-npm run smoke:linux
+npm run smoke:linux   # Linux, on a private Xvfb display
+npm run smoke:macos   # macOS, in the logged-in native desktop session
 ```
 
-The Linux smoke needs `xvfb-run`, `xauth`, and `dbus-run-session`, supplied on Debian/Ubuntu by `xvfb`, `xauth`, and `dbus-x11`. It uses local fixtures, isolated configuration, a private display, and a D-Bus session. It leaves a screenshot at `/tmp/agent-broker-smoke.png`; `AGENT_BROKER_SMOKE_SCREENSHOT` selects another path.
+The Linux smoke needs `xvfb-run`, `xauth`, and `dbus-run-session`, supplied on Debian/Ubuntu by `xvfb`, `xauth`, and `dbus-x11`. It uses a private display and D-Bus session. The Mac smoke opens native Electron windows and requires no Accessibility permissions. Both use only local fixture services and short private temporary runtime homes, never the operator's configuration or real accounts. Run these tests serially on a desktop.
+
+Both commands include fixture integration and lifecycle checks: detached startup, discovery, single-instance reuse, authentication, output validation, simulated service writes, window restore/focus, close with a popup open, Quit, terminal signals, ephemeral restart, and explicit development-cookie flush. Forced teardown or surviving owned processes fails the run. `npm run smoke:lifecycle` runs just the lifecycle checks inside the appropriate desktop harness.
+
+The smoke leaves a screenshot in the system temporary directory as `agent-broker-smoke.png`; `AGENT_BROKER_SMOKE_SCREENSHOT` selects another path. On fixture failure, a sibling `.diagnostics.txt` preserves the stage, Electron stderr, and broker log before temporary state is removed. These artifacts use synthetic fixture data. Inspect the screenshot and verify teardown when validating locally.
+
+CI runs `npm run check` on Ubuntu 24.04, macOS 15 ARM64, and macOS 15 Intel with Node 22.12 and 24. It runs each platform's full Electron smoke on Node 24 and retains screenshots and test diagnostics. Local fixture coverage does not establish compatibility with current live U-M services.
 
 On the Thelio, follow the installed native-Xvfb skill's harness as required by [AGENTS.md](AGENTS.md). Its `AGENT_BROKER_SMOKE_HEADFUL=1` mode checks the private display and authority before launching Electron. Never test against the inherited desktop.
 
